@@ -1,0 +1,158 @@
+state: 
+    28  20565    781      1      1
+     4  16354    749      1      1
+[torch.FloatTensor of size 2x5]
+
+ ounoise: <ounoise.OUNoise object at 0x7f3cd5313cf8>
+next state: 
+    10  12537    694      1      1
+     3   9980    404      1      1
+[torch.FloatTensor of size 2x5]
+
+state: 
+    28  20565    781      1      1
+     4  16354    749      1      1
+[torch.FloatTensor of size 2x5]
+
+ ounoise: <ounoise.OUNoise object at 0x7f3cd5313cf8>
+next state: 
+     6  14712    711      1      1
+     3   8424    571      1      1
+[torch.FloatTensor of size 2x5]
+
+state: 
+    28  20565    781      1      1
+     4  16354    749      1      1
+[torch.FloatTensor of size 2x5]
+
+ ounoise: <ounoise.OUNoise object at 0x7f3cd5313cf8>
+next state: 
+     4  26811    676      1      1
+     3  15007    573      1      1
+[torch.FloatTensor of size 2x5]
+
+state: 
+    28  20565    781      1      1
+     4  16354    749      1      1
+[torch.FloatTensor of size 2x5]
+
+ ounoise: <ounoise.OUNoise object at 0x7f3cd5313cf8>
+next state: 
+    14  30643    573      1      1
+     4   5557    583      1      1
+[torch.FloatTensor of size 2x5]
+
+state: 
+    28  20565    781      1      1
+     4  16354    749      1      1
+[torch.FloatTensor of size 2x5]
+
+ ounoise: <ounoise.OUNoise object at 0x7f3cd5313cf8>
+next state: 
+    45  40812    115      1      1
+     2  14306    951      1      1
+[torch.FloatTensor of size 2x5]
+
+state: 
+    28  20565    781      1      1
+     4  16354    749      1      1
+[torch.FloatTensor of size 2x5]
+
+ ounoise: <ounoise.OUNoise object at 0x7f3cd5313cf8>
+update --------------------
+update --------------------
+update --------------------
+update --------------------
+update --------------------
+next state: 
+    45  40812      1      1      1
+     2   7986    959      1      1
+[torch.FloatTensor of size 2x5]
+
+state: 
+    28  20565    781      1      1
+     4  16354    749      1      1
+[torch.FloatTensor of size 2x5]
+
+ ounoise: <ounoise.OUNoise object at 0x7f3cd5313cf8>
+update --------------------
+update --------------------
+update --------------------
+update --------------------
+update --------------------
+next state: 
+    45  40812      1      1      1
+     4   8664    895      1      1
+[torch.FloatTensor of size 2x5]
+
+state: 
+    28  20565    781      1      1
+     4  16354    749      1      1
+[torch.FloatTensor of size 2x5]
+
+ ounoise: <ounoise.OUNoise object at 0x7f3cd5313cf8>
+update --------------------
+update --------------------
+update --------------------
+update --------------------
+update --------------------
+next state: 
+    45  40812      0      1      1
+     2   5386   1159      1      1
+[torch.FloatTensor of size 2x5]
+
+state: 
+    28  20565    781      1      1
+     4  16354    749      1      1
+[torch.FloatTensor of size 2x5]
+
+ ounoise: <ounoise.OUNoise object at 0x7f3cd5313cf8>
+update --------------------
+update --------------------
+update --------------------
+update --------------------
+update --------------------
+next state: 
+    45  40812      1      1      1
+     3   5939   1074      1      1
+[torch.FloatTensor of size 2x5]
+
+state: 
+    28  20565    781      1      1
+     4  16354    749      1      1
+[torch.FloatTensor of size 2x5]
+
+ ounoise: <ounoise.OUNoise object at 0x7f3cd5313cf8>
+update --------------------
+update --------------------
+update --------------------
+update --------------------
+update --------------------
+next state: 
+    45  40812      0      1      1
+     2   3583   1323      1      1
+[torch.FloatTensor of size 2x5]
+
+state: 
+    28  20565    781      1      1
+     4  16354    749      1      1
+[torch.FloatTensor of size 2x5]
+
+ ounoise: <ounoise.OUNoise object at 0x7f3cd5313cf8>
+update --------------------
+update --------------------
+update --------------------
+update --------------------
+update --------------------
+next state: 
+    45  40812      0      1      1
+     5  12816   1143      1      1
+[torch.FloatTensor of size 2x5]
+
+state: 
+    28  20565    781      1      1
+     4  16354    749      1      1
+[torch.FloatTensor of size 2x5]
+
+ ounoise: <ounoise.OUNoise object at 0x7f3cd5313cf8>
+
