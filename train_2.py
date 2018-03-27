@@ -12,7 +12,8 @@ from gym import wrappers
 from gym import spaces 
 
 import torch
-from ddpgMPTCP import DDPG
+from ddpg import DDPG
+from naf import NAF
 from normalized_actions import NormalizedActions
 from ounoise import OUNoise
 from replay_memory import ReplayMemory, Transition
@@ -120,7 +121,7 @@ def main():
     my_env = env(fd=fd, buff_size=SIZE, time=TIME)
     
     args = parser.parse_args()
-    agent = DDPG(args.gamma, args.tau, args.hidden_size,
+    agent = NAF(args.gamma, args.tau, args.hidden_size,
                       my_env.observation_space.shape[0], my_env.action_space)
     memory = ReplayMemory(args.replay_size)
     ounoise = OUNoise(my_env.action_space.shape[0])
@@ -130,9 +131,9 @@ def main():
     while True:
 #        action = []
         state = torch.FloatTensor(state)
-        print("state: {}\n ounoise: {}".format(state, ounoise))
+#        print("state: {}\n ounoise: {}".format(state, ounoise))
         action = agent.select_action(state, ounoise)
-        #print("action: {}".format(action))
+        print("action: {}".format(action))
         next_state, count, done = my_env.step(action)
 
         action = torch.FloatTensor(action)
@@ -148,23 +149,12 @@ def main():
                 batch = Transition(*zip(*transitions))
                 print("update",10*'--')
                 agent.update_parameters(batch)      
-                '''
-                error:
-               
-  File "/home/han/githubfiles/pytorch-ddpg-naf/trian_2.py", line 150, in main
-    agent.update_parameters(batch)
-
-  File "/home/han/githubfiles/pytorch-ddpg-naf/ddpgMPTCP.py", line 140, in update_parameters
-    expected_state_action_batch = reward_batch + (self.gamma * next_state_action_values)
-
-RuntimeError: The size of tensor a (2) must match the size of tensor b (4) at non-singleton dimension 0
-
-                '''
+  
         
         if done:
             break
         # [[2, 4288, 1294, 1, 1], [1, 3492, 1160, 0, 1]]
-        print("next state: {}".format(next_state))
+#        print("next state: {}".format(next_state))
         
     print(count)
 
