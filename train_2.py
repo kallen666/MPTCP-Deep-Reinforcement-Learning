@@ -9,7 +9,7 @@ import argparse
 import gym
 import numpy as np
 from gym import wrappers
-from gym import spaces 
+from gym import spaces
 
 import torch
 from ddpg import DDPG
@@ -81,7 +81,9 @@ class env():
         if len(state_nxt) == 0:
             done = True
         self.count = self.count + 1
-        return self.adjust(state_nxt), self.count, done
+        state_nxt = self.adjust(state_nxt)
+        reward = (state_nxt[0][2]-state_nxt[0][0])/(state_nxt[0][1]+1) + (state_nxt[1][2]-state_nxt[1][0])/(state_nxt[1][1]+1)
+        return state_nxt, reward, self.count, done
 
 
 def main():
@@ -93,72 +95,73 @@ def main():
     FILE = cfg.get('file', 'file')
     SIZE = cfg.getint('env', 'buffer_size')
     TIME = cfg.getint('env', 'time')
+    EPISODE = cfg.getint('env', 'episode')
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect((IP, PORT))
-    fd = sock.fileno()
-    io = io_thread(sock=sock, filename=FILE, buffer_size=SIZE)
-    mpsched.persist_state(fd)
-    
     parser = argparse.ArgumentParser(description='PyTorch REINFORCE example')
-   
+
     parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
-                    help='discount factor for reward (default: 0.99)')                    
+                    help='discount factor for reward (default: 0.99)')
     parser.add_argument('--tau', type=float, default=0.001, metavar='G',
-                    help='discount factor for model (default: 0.001)')                    
+                    help='discount factor for model (default: 0.001)')
     parser.add_argument('--noise_scale', type=float, default=0.3, metavar='G',
-                    help='initial noise scale (default: 0.3)')                
+                    help='initial noise scale (default: 0.3)')
     parser.add_argument('--hidden_size', type=int, default=128, metavar='N',
-                    help='number of hidden size (default: 128)')                    
+                    help='number of hidden size (default: 128)')
     parser.add_argument('--replay_size', type=int, default=1000000, metavar='N',
                     help='size of replay buffer (default: 1000000)')
     parser.add_argument('--updates_per_step', type=int, default=5, metavar='N',
                     help='model updates per simulator step (default: 5)')
     parser.add_argument('--batch_size', type=int, default=1, metavar='N',
                     help='batch size (default: 128)')
-                    
-    io.start()
+
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((IP, PORT))
+    fd = sock.fileno()
     my_env = env(fd=fd, buff_size=SIZE, time=TIME)
-    
+    mpsched.persist_state(fd)
+
     args = parser.parse_args()
     agent = NAF(args.gamma, args.tau, args.hidden_size,
                       my_env.observation_space.shape[0], my_env.action_space)
     memory = ReplayMemory(args.replay_size)
     ounoise = OUNoise(my_env.action_space.shape[0])
-    
 
-    state=my_env.reset()
-    while True:
-#        action = []
-        state = torch.FloatTensor(state)
-#        print("state: {}\n ounoise: {}".format(state, ounoise))
-        action = agent.select_action(state, ounoise)
-        print("action: {}".format(action))
-        next_state, count, done = my_env.step(action)
+    for t in range(EPISODE):
+        io = io_thread(sock=sock, filename=FILE, buffer_size=SIZE)
+        io.start()
 
-        action = torch.FloatTensor(action)
-        mask = torch.Tensor([not done])
-        next_state = torch.FloatTensor(next_state)
-        reward = torch.FloatTensor([float(count)]) #count -> reward  
-        memory.push(state, action, mask, next_state, reward)
-        #state = next_state
-            
-        if len(memory) > args.batch_size * 5:
-            for _ in range(args.updates_per_step):
-                transitions = memory.sample(args.batch_size)
-                batch = Transition(*zip(*transitions))
-                print("update",10*'--')
-                agent.update_parameters(batch)      
-  
-        
-        if done:
-            break
-        # [[2, 4288, 1294, 1, 1], [1, 3492, 1160, 0, 1]]
-#        print("next state: {}".format(next_state))
-        
-    print(count)
+        state=my_env.reset()
+        while True:
+    #        action = []
+            state = torch.FloatTensor(state)
+    #        print("state: {}\n ounoise: {}".format(state, ounoise))
+            action = agent.select_action(state, ounoise)
+            print("action: {}".format(action))
+            next_state, reward, count, done = my_env.step(action)
 
-    io.join()
+            action = torch.FloatTensor(action)
+            mask = torch.Tensor([not done])
+            next_state = torch.FloatTensor(next_state)
+            reward = torch.FloatTensor([float(reward)]) #count -> reward
+            memory.push(state, action, mask, next_state, reward)
+            #state = next_state
+
+            if len(memory) > args.batch_size * 5:
+                for _ in range(args.updates_per_step):
+                    transitions = memory.sample(args.batch_size)
+                    batch = Transition(*zip(*transitions))
+                    print("update",10*'--')
+                    agent.update_parameters(batch)
+
+            if done:
+                break
+            # [[2, 4288, 1294, 1, 1], [1, 3492, 1160, 0, 1]]
+    #        print("next state: {}".format(next_state))
+        print(count)
+        io.join()
+
+    sock.close()
 
 
 if __name__ == '__main__':
