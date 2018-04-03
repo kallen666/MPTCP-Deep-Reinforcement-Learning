@@ -72,8 +72,8 @@ class env():
 
     """ action = [sub1_buff_size, sub2_buff_size] """
     def step(self, action):
-        # A = [self.fd, action[0], action[1]]
-        # mpsched.set_seg(A)
+        A = [self.fd, action[0], action[1]]
+        mpsched.set_seg(A)
         time.sleep(self.time)
         state_nxt = mpsched.get_info(self.fd)
         done = False
@@ -103,15 +103,21 @@ def main():
                     help='discount factor for reward (default: 0.99)')
     parser.add_argument('--tau', type=float, default=0.001, metavar='G',
                     help='discount factor for model (default: 0.001)')
+                    
     parser.add_argument('--noise_scale', type=float, default=0.3, metavar='G',
                     help='initial noise scale (default: 0.3)')
+    parser.add_argument('--final_noise_scale', type=float, default=0.3, metavar='G',
+                    help='final noise scale (default: 0.3)')      
+    parser.add_argument('--exploration_end', type=int, default=100, metavar='N',
+                    help='number of episodes with noise (default: 100)')
+                    
     parser.add_argument('--hidden_size', type=int, default=128, metavar='N',
                     help='number of hidden size (default: 128)')
     parser.add_argument('--replay_size', type=int, default=1000000, metavar='N',
                     help='size of replay buffer (default: 1000000)')
     parser.add_argument('--updates_per_step', type=int, default=5, metavar='N',
                     help='model updates per simulator step (default: 5)')
-    parser.add_argument('--batch_size', type=int, default=1, metavar='N',
+    parser.add_argument('--batch_size', type=int, default=64, metavar='N',
                     help='batch size (default: 128)')
 
 
@@ -127,40 +133,65 @@ def main():
     memory = ReplayMemory(args.replay_size)
     ounoise = OUNoise(my_env.action_space.shape[0])
 
-    for t in range(EPISODE):
-        io = io_thread(sock=sock, filename=FILE, buffer_size=SIZE)
-        io.start()
+    rewards = []
+    for i_episode in range(EPISODE):
+        if (i_episode < 0.9*EPISODE):  # training
+            io = io_thread(sock=sock, filename=FILE, buffer_size=SIZE)
+            io.start()
+            
+            state=my_env.reset()
+            
+            ounoise.scale = (args.noise_scale - args.final_noise_scale) * max(0, args.exploration_end - i_episode) / args.exploration_end + args.final_noise_scale
+            ounoise.reset()
+            
+            episode_reward = 0
+            while True:
+                state = torch.FloatTensor(state)
+                print("state: {}\n ounoise: {}".format(state, ounoise.scale))
+                action = agent.select_action(state, ounoise)
+                print("action: {}".format(action))
+                next_state, reward, count, done = my_env.step(action)
+                episode_reward += reward
+                
+                action = torch.FloatTensor(action)
+                mask = torch.Tensor([not done])
+                next_state = torch.FloatTensor(next_state)
+                reward = torch.FloatTensor([float(reward)]) 
+                memory.push(state, action, mask, next_state, reward)
+                
+                state = next_state
 
-        state=my_env.reset()
-        while True:
-    #        action = []
-            state = torch.FloatTensor(state)
-    #        print("state: {}\n ounoise: {}".format(state, ounoise))
-            action = agent.select_action(state, ounoise)
-            print("action: {}".format(action))
-            next_state, reward, count, done = my_env.step(action)
+                if len(memory) > args.batch_size * 5:
+                    for _ in range(args.updates_per_step):
+                        transitions = memory.sample(args.batch_size)
+                        batch = Transition(*zip(*transitions))
+                        print("update",10*'--')
+                        agent.update_parameters(batch)
+                    
+                if done:
+                    break
+            rewards.append(episode_reward)
+            io.join()
+        else:  # testing
+            io = io_thread(sock=sock, filename=FILE, buffer_size=SIZE)
+            io.start()
+            state=my_env.reset()
+            episode_reward = 0
+            while True:
+                state = torch.FloatTensor(state)
+                #print("state: {}\n".format(state))
+                action = agent.select_action(state)
+                #print("action: {}".format(action))
+                next_state, reward, count, done = my_env.step(action)
+                episode_reward += reward
+                state = next_state
 
-            action = torch.FloatTensor(action)
-            mask = torch.Tensor([not done])
-            next_state = torch.FloatTensor(next_state)
-            reward = torch.FloatTensor([float(reward)]) #count -> reward
-            memory.push(state, action, mask, next_state, reward)
-            #state = next_state
-
-            if len(memory) > args.batch_size * 5:
-                for _ in range(args.updates_per_step):
-                    transitions = memory.sample(args.batch_size)
-                    batch = Transition(*zip(*transitions))
-                    print("update",10*'--')
-                    agent.update_parameters(batch)
-
-            if done:
-                break
-            # [[2, 4288, 1294, 1, 1], [1, 3492, 1160, 0, 1]]
-    #        print("next state: {}".format(next_state))
-        print(count)
-        io.join()
-
+                if done:
+                    break
+            rewards.append(episode_reward)
+            io.join()
+        print("Episode: {}, noise: {}, reward: {}, average reward: {}".format(i_episode, ounoise.scale, rewards[-1], np.mean(rewards[-100:])))
+            
     sock.close()
 
 
