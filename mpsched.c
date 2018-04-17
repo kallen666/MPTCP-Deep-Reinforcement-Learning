@@ -57,12 +57,10 @@ static PyObject* get_info(PyObject* self, PyObject* args)
       break;
 
     PyObject *subflows = PyList_New(0);
-    PyList_Append(subflows, Py_BuildValue("I", others[i].tcpi_unacked)); /* Packets which are "in flight"	*/
-    PyList_Append(subflows, Py_BuildValue("I", others[i].tcpi_rtt));
     PyList_Append(subflows, Py_BuildValue("I", others[i].tcpi_segs_out));
-
-    PyList_Append(subflows, Py_BuildValue("H", quota[i]));
-    PyList_Append(subflows, Py_BuildValue("H", segments[i]));
+    PyList_Append(subflows, Py_BuildValue("I", others[i].tcpi_rtt));
+    PyList_Append(subflows, Py_BuildValue("I", others[i].tcpi_unacked));
+    PyList_Append(subflows, Py_BuildValue("I", others[i].tcpi_total_retrans)); /* Packets which are "in flight"	*/
 
     PyList_Append(list, subflows);
   }

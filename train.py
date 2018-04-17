@@ -30,30 +30,56 @@ class io_thread(threading.Thread):
 
 class env():
     """ """
-    def __init__(self, fd, buff_size, time):
+    def __init__(self, fd, buff_size, time, k, l, m, n, p):
         self.fd = fd
         self.buff_size = buff_size
+        self.k = k  ##对以往k个时间段的观测
         self.time = time
         self.last = []
+        self.list = []
         self.count = 1
+        self.l = l  ##吞吐量的奖励因子
+        self.m = m  ##RTT惩罚因子
+        self.n = n  ##缓冲区膨胀惩罚因子
+        self.p = p  ##重传惩罚因子
 
     """ adjust info to get goodput """
     def adjust(self, state):
-        goodput = [state[i][2] - self.last[i] for i in range(len(state))]
-        self.last = [sub_info[2] for sub_info in state]
-        for i in range(len(state)):
-            state[i][2] = goodput[i]
-        return state
+        temp = []
+        for j in range(len(state)):
+             temp.append([state[j][0]-self.last[j][0], state[j][1], state[j][2], state[j][3]])
+        self.last = state
+        self.list.pop(0)
+        self.list.append(temp)
+        return self.list
+
+    def reward(self):
+        rewards = 0;
+        for i in range(self.k):
+             temp = self.list[i]
+             for j in range(len(temp)):
+                 rewards = rewards + self.l * temp[j][0]
+        temp = self.list[-1]
+        for j in range(len(temp)):
+            rewards = rewards - self.m*temp[j][1] - self.n * temp[j][2] - self.p * (temp[j][3] - self.list[0][j][3])
+        return rewards
 
     """ reset env, return the initial state  """
     def reset(self):
         mpsched.persist_state(self.fd)
         time.sleep(1)
-        state = mpsched.get_info(self.fd)
-        self.last = [sub_info[2] for sub_info in state]
-        time.sleep(self.time)
-        state = mpsched.get_info(self.fd)
-        return self.adjust(state)
+        self.last = mpsched.get_info(self.fd)
+
+        for i in range(self.k):
+            state = mpsched.get_info(self.fd)
+            temp = []
+            for j in range(len(state)):
+                 temp.append([state[j][0]-self.last[j][0], state[j][1], state[j][2], state[j][3]])
+            self.last = state
+            self.list.append(temp)
+            time.sleep(self.time)
+
+        return self.list
 
     """ action = [sub1_buff_size, sub2_buff_size] """
     def step(self, action):
@@ -62,11 +88,10 @@ class env():
         time.sleep(self.time)
         state_nxt = mpsched.get_info(self.fd)
         done = False
-        #print(state_nxt)
         if len(state_nxt) == 0:
             done = True
         self.count = self.count + 1
-        return self.adjust(state_nxt), self.count, done
+        return self.adjust(state_nxt), self.reward(), self.count, done
 
 
 def main():
@@ -77,7 +102,7 @@ def main():
     PORT = cfg.getint('server', 'port')
     FILE = cfg.get('file', 'file')
     SIZE = cfg.getint('env', 'buffer_size')
-    TIME = cfg.getint('env', 'time')
+    TIME = cfg.getfloat('env', 'time')
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((IP, PORT))
@@ -86,15 +111,15 @@ def main():
     mpsched.persist_state(fd)
 
     io.start()
-    my_env = env(fd=fd, buff_size=SIZE, time=TIME)
+    my_env = env(fd=fd, buff_size=SIZE, time=TIME, k=4, l=0.01, m=0.02, n=0.03, p=0.05)
 
-    state=my_env.reset()
+    state = my_env.reset()
     while True:
         action = []
-        state_nxt, count, done = my_env.step(action)
+        state_nxt, reward, count, done = my_env.step(action)
         if done:
             break
-        print(state_nxt)
+        print(reward)
     print(count)
 
     io.join()
