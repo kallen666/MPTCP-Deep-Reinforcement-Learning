@@ -1,3 +1,5 @@
 __pycache__
 t2.tar.gz
+*.pcap
+*.txt
 
