@@ -38,6 +38,7 @@ class env():
         self.last = []
         self.list = []
         self.count = 1
+        self.recv_buff_size = 0
         self.l = l  ##吞吐量的奖励因子
         self.m = m  ##RTT惩罚因子
         self.n = n  ##缓冲区膨胀惩罚因子
@@ -46,11 +47,12 @@ class env():
     """ adjust info to get goodput """
     def adjust(self, state):
         temp = []
-        for j in range(len(state)):
+        for j in range(len(state)-1):
              temp.append([state[j][0]-self.last[j][0], state[j][1], state[j][2], state[j][3]])
         self.last = state
         self.list.pop(0)
         self.list.append(temp)
+        self.recv_buff_size = state[len(state) - 1]
         return self.list
 
     def reward(self):
@@ -91,12 +93,12 @@ class env():
         if len(state_nxt) == 0:
             done = True
         self.count = self.count + 1
-        return self.adjust(state_nxt), self.reward(), self.count, done
+        return self.adjust(state_nxt), self.reward(), self.count, self.recv_buff_size, done
 
 
 def main():
     cfg = ConfigParser()
-    cfg.read('config.ini')
+    cfg.read('config.ini
 
     IP = cfg.get('server', 'ip')
     PORT = cfg.getint('server', 'port')
@@ -116,7 +118,7 @@ def main():
     state = my_env.reset()
     while True:
         action = []
-        state_nxt, reward, count, done = my_env.step(action)
+        state_nxt, reward, count, recv_buff_size, done = my_env.step(action)
         if done:
             break
         print(reward)

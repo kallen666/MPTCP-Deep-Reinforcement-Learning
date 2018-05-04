@@ -12,6 +12,36 @@ static PyObject* persist_state(PyObject* self, PyObject* args)
   return Py_BuildValue("i", fd);
 }
 
+static PyObject* get_recv_buff(PyObject* self, PyObject* args)
+{
+    int fd;
+    if(!PyArg_ParseTuple(args, "i", &fd)) {
+      return NULL;
+    }
+
+    struct mptcp_info minfo;
+    struct mptcp_meta_info meta_info;
+    struct tcp_info initial;
+    struct tcp_info others[NUM_SUBFLOWS];
+    struct mptcp_sub_info others_info[NUM_SUBFLOWS];
+
+    minfo.tcp_info_len = sizeof(struct tcp_info);
+    minfo.sub_len = sizeof(others);
+    minfo.meta_len = sizeof(struct mptcp_meta_info);
+    minfo.meta_info = &meta_info;
+    minfo.initial = &initial;
+    minfo.subflows = &others;
+    minfo.sub_info_len = sizeof(struct mptcp_sub_info);
+    minfo.total_sub_info_len = sizeof(others_info);
+    minfo.subflow_info = &others_info;
+
+    socklen_t len = sizeof(minfo);
+
+    getsockopt(fd, SOL_TCP, MPTCP_INFO, &minfo, &len);
+
+    return Py_BuildValue("I", meta_info.mptcpi_unacked);
+}
+
 static PyObject* get_info(PyObject* self, PyObject* args)
 {
   int fd;
@@ -25,14 +55,6 @@ static PyObject* get_info(PyObject* self, PyObject* args)
   struct tcp_info others[NUM_SUBFLOWS];
   struct mptcp_sub_info others_info[NUM_SUBFLOWS];
 
-  struct mptcp_sched_info sched_info;
-  sched_info.len = NUM_SUBFLOWS;
-  unsigned char quota[NUM_SUBFLOWS];
-  unsigned char segments[NUM_SUBFLOWS];
-
-  sched_info.quota = &quota;
-  sched_info.num_segments = &segments;
-
   minfo.tcp_info_len = sizeof(struct tcp_info);
   minfo.sub_len = sizeof(others);
   minfo.meta_len = sizeof(struct mptcp_meta_info);
@@ -44,10 +66,8 @@ static PyObject* get_info(PyObject* self, PyObject* args)
   minfo.subflow_info = &others_info;
 
   socklen_t len = sizeof(minfo);
-  socklen_t slen = sizeof(struct mptcp_sched_info);
 
   getsockopt(fd, SOL_TCP, MPTCP_INFO, &minfo, &len);
-  getsockopt(fd, SOL_TCP, MPTCP_SCHED_INFO, &sched_info, &slen);
 
   PyObject *list = PyList_New(0);
   int i;
@@ -99,6 +119,7 @@ static PyObject* set_seg(PyObject* self, PyObject* args)
 
 static PyMethodDef Methods[] = {
   {"persist_state", persist_state, METH_VARARGS, "persist mptcp subflows tate"},
+  {"get_recv_buff", get_recv_buff, METH_VARARGS, "get mptcp recv buff size"},
   {"get_info", get_info, METH_VARARGS, "get mptcp subflows info"},
   {"set_seg", set_seg, METH_VARARGS, "set num of segments in all mptcp subflows"},
   {NULL, NULL, 0, NULL}
