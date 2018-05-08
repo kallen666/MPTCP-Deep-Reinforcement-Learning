@@ -151,7 +151,7 @@ def main():
     mpsched.persist_state(fd)
 
     args = parser.parse_args()
-    agent = NAF(args.gamma, args.tau, args.hidden_size,
+    agent = DDPG(args.gamma, args.tau, args.hidden_size,
                       my_env.observation_space.shape[0], my_env.action_space)
     memory = ReplayMemory(args.replay_size)
     ounoise = OUNoise(my_env.action_space.shape[0])
