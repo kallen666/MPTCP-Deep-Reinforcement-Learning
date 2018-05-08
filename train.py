@@ -34,36 +34,36 @@ class env():
         self.fd = fd
         self.buff_size = buff_size
         self.k = k  ##对以往k个时间段的观测
-        self.time = time
-        self.last = []
-        self.list = []
-        self.count = 1
-        self.recv_buff_size = 0
         self.l = l  ##吞吐量的奖励因子
         self.m = m  ##RTT惩罚因子
         self.n = n  ##缓冲区膨胀惩罚因子
         self.p = p  ##重传惩罚因子
+        self.time = time
+        self.last = []
+        self.tp = [[], []]
+        self.rtt = [[], []]
+        self.rr = [0, 0]
+        self.count = 1
+        self.recv_buff_size = 0
+
 
     """ adjust info to get goodput """
     def adjust(self, state):
-        temp = []
-        for j in range(len(state)-1):
-             temp.append([state[j][0]-self.last[j][0], state[j][1], state[j][2], state[j][3]])
+        for j in range(len(state)):
+            self.tp[j].pop(0)
+            self.tp[j].append(state[j][0]-self.last[j][0])
+            self.rtt[j].pop(0)
+            self.rtt[j].append(state[j][1])
+            self.rr[j] = state[j][3] - self.last[j][3]
         self.last = state
-        self.list.pop(0)
-        self.list.append(temp)
-        self.recv_buff_size = state[len(state) - 1]
-        return self.list
+        self.recv_buff_size = mpsched.get_recv_buff(self.fd)
+        return [self.tp[0] + self.rtt[0] + [state[0][2]] + [self.rr[0]], self.tp[1] + self.rtt[1] + [state[1][2]] + [self.rr[1]]]
 
     def reward(self):
-        rewards = 0;
-        for i in range(self.k):
-             temp = self.list[i]
-             for j in range(len(temp)):
-                 rewards = rewards + self.l * temp[j][0]
-        temp = self.list[-1]
-        for j in range(len(temp)):
-            rewards = rewards - self.m*temp[j][1] - self.n * temp[j][2] - self.p * (temp[j][3] - self.list[0][j][3])
+        rewards = self.l * (sum(self.tp[0]) + sum(self.tp[1]))
+        rewards = rewards - self.m * (sum(self.rtt[0]) + sum(self.rtt[1]))
+        rewards = rewards - self.n * self.recv_buff_size
+        rewards = rewards - self.p * sum(self.rr)
         return rewards
 
     """ reset env, return the initial state  """
@@ -74,14 +74,14 @@ class env():
 
         for i in range(self.k):
             state = mpsched.get_info(self.fd)
-            temp = []
             for j in range(len(state)):
-                 temp.append([state[j][0]-self.last[j][0], state[j][1], state[j][2], state[j][3]])
+                 self.tp[j].append(state[j][0]-self.last[j][0])
+                 self.rtt[j].append(state[j][1])
+                 self.rr[j] = state[j][3] - self.last[j][3]
             self.last = state
-            self.list.append(temp)
             time.sleep(self.time)
-
-        return self.list
+        self.recv_buff_size = mpsched.get_recv_buff(self.fd)
+        return [self.tp[0] + self.rtt[0] + [state[0][2]] + [self.rr[0]], self.tp[1] + self.rtt[1] + [state[1][2]] + [self.rr[1]]]
 
     """ action = [sub1_buff_size, sub2_buff_size] """
     def step(self, action):
@@ -98,7 +98,7 @@ class env():
 
 def main():
     cfg = ConfigParser()
-    cfg.read('config.ini
+    cfg.read('config.ini')
 
     IP = cfg.get('server', 'ip')
     PORT = cfg.getint('server', 'port')
@@ -121,7 +121,8 @@ def main():
         state_nxt, reward, count, recv_buff_size, done = my_env.step(action)
         if done:
             break
-        print(reward)
+        print(state_nxt)
+        print(recv_buff_size)
     print(count)
 
     io.join()
