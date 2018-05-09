@@ -13,6 +13,7 @@ from gym import spaces
 
 import torch
 from ddpg import DDPG
+from ddpg_cnn import DDPG_CNN
 from naf import NAF
 from normalized_actions import NormalizedActions
 from ounoise import OUNoise
@@ -48,36 +49,40 @@ class env():
         self.fd = fd
         self.buff_size = buff_size
         self.k = k  ##对以往k个时间段的观测
-        self.time = time
-        self.last = []
-        self.list = []
-        self.count = 1
         self.l = l  ##吞吐量的奖励因子
         self.m = m  ##RTT惩罚因子
         self.n = n  ##缓冲区膨胀惩罚因子
         self.p = p  ##重传惩罚因子
-        self.observation_space = spaces.Box(np.array([0,0,0,0]), np.array([float("inf"),float("inf"),float("inf"),float("inf")]))
+        self.time = time
+        self.last = []
+        self.tp = [[], []]
+        self.rtt = [[], []]
+        self.rr = [0, 0]
+        self.count = 1
+        self.recv_buff_size = 0
+        
+        self.observation_space = spaces.Box(np.array([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]), np.array([float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf")]))
+        
         self.action_space = spaces.Box(np.array([1]), np.array([4]))
 
+    
     """ adjust info to get goodput """
     def adjust(self, state):
-        temp = []
         for j in range(len(state)):
-             temp.append([state[j][0]-self.last[j][0], state[j][1], state[j][2], state[j][3]])
+            self.tp[j].pop(0)
+            self.tp[j].append(state[j][0]-self.last[j][0])
+            self.rtt[j].pop(0)
+            self.rtt[j].append(state[j][1])
+            self.rr[j] = state[j][3] - self.last[j][3]
         self.last = state
-        self.list.pop(0)
-        self.list.append(temp)
-        return self.list
+        self.recv_buff_size = mpsched.get_recv_buff(self.fd)
+        return [self.tp[0] + self.rtt[0] + [state[0][2]] + [self.rr[0]], self.tp[1] + self.rtt[1] + [state[1][2]] + [self.rr[1]]]
 
     def reward(self):
-        rewards = 0;
-        for i in range(self.k):
-             temp = self.list[i]
-             for j in range(len(temp)):
-                 rewards = rewards + self.l * temp[j][0]
-        temp = self.list[-1]
-        for j in range(len(temp)):
-            rewards = rewards - self.m*temp[j][1] - self.n * temp[j][2] - self.p * (temp[j][3] - self.list[0][j][3])
+        rewards = self.l * (sum(self.tp[0]) + sum(self.tp[1]))
+        rewards = rewards - self.m * (sum(self.rtt[0]) + sum(self.rtt[1]))
+        rewards = rewards - self.n * self.recv_buff_size
+        rewards = rewards - self.p * sum(self.rr)
         return rewards
 
     """ reset env, return the initial state  """
@@ -88,14 +93,14 @@ class env():
 
         for i in range(self.k):
             state = mpsched.get_info(self.fd)
-            temp = []
             for j in range(len(state)):
-                 temp.append([state[j][0]-self.last[j][0], state[j][1], state[j][2], state[j][3]])
+                 self.tp[j].append(state[j][0]-self.last[j][0])
+                 self.rtt[j].append(state[j][1])
+                 self.rr[j] = state[j][3] - self.last[j][3]
             self.last = state
-            self.list.append(temp)
             time.sleep(self.time)
-
-        return self.list
+        self.recv_buff_size = mpsched.get_recv_buff(self.fd)
+        return [self.tp[0] + self.rtt[0] + [state[0][2]] + [self.rr[0]], self.tp[1] + self.rtt[1] + [state[1][2]] + [self.rr[1]]]
 
     """ action = [sub1_buff_size, sub2_buff_size] """
     def step(self, action):
@@ -107,7 +112,8 @@ class env():
         if len(state_nxt) == 0:
             done = True
         self.count = self.count + 1
-        return self.adjust(state_nxt), self.reward(), self.count, done
+        return self.adjust(state_nxt), self.reward(), self.count, self.recv_buff_size, done
+
 
 def main():
     cfg = ConfigParser()
@@ -147,11 +153,11 @@ def main():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((IP, PORT))
     fd = sock.fileno()
-    my_env = env(fd=fd, buff_size=SIZE, time=TIME, k=1, l=0.01, m=0.02, n=0.03, p=0.05)
+    my_env = env(fd=fd, buff_size=SIZE, time=TIME, k=8, l=0.01, m=0.02, n=0.03, p=0.05)
     mpsched.persist_state(fd)
 
     args = parser.parse_args()
-    agent = DDPG(args.gamma, args.tau, args.hidden_size,
+    agent = DDPG_CNN(args.gamma, args.tau, args.hidden_size,
                       my_env.observation_space.shape[0], my_env.action_space)
     memory = ReplayMemory(args.replay_size)
     ounoise = OUNoise(my_env.action_space.shape[0])
@@ -166,15 +172,16 @@ def main():
             
             ounoise.scale = (args.noise_scale - args.final_noise_scale) * max(0, args.exploration_end - i_episode) / args.exploration_end + args.final_noise_scale
             ounoise.reset()
-            
+            print(state)
             episode_reward = 0
             while True:
-                state = state[0]
                 state = torch.FloatTensor(state)
                 print("state: {}\n ounoise: {}".format(state, ounoise.scale))
                 action = agent.select_action(state, ounoise)
                 print("action: {}".format(action))
-                next_state, reward, count, done = my_env.step(action)
+                next_state, reward, count, recv_buff_size, done = my_env.step(action)
+                print("buff size: ",recv_buff_size)
+                print("reward: ", reward)
                 episode_reward += reward
                 
                 action = torch.FloatTensor(action)

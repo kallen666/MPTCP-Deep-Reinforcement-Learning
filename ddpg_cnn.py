@@ -90,7 +90,6 @@ class Actor(nn.Module):
         x = torch.cat((cnn1,cnn2), 1)
         x = torch.cat((x,inputs[:,16:]), 1)
         
-        print(x)
         
         x = self.bn0(x)
         x = F.tanh(self.linear1(x))
@@ -106,6 +105,33 @@ class Critic(nn.Module):
         super(Critic, self).__init__()
         self.action_space = action_space
         num_outputs = action_space.shape[0]
+        
+        self.conv1 = nn.Sequential(         
+            nn.Conv1d(
+                in_channels=2,              
+                out_channels=16,            
+                kernel_size=4,             
+                stride=1,                   
+                padding=1,                 
+            ),                              
+            nn.ReLU(),                      
+            nn.MaxPool1d(kernel_size=2),    
+        )
+        self.out1 = nn.Linear(48, 16)   
+        
+        self.conv2 = nn.Sequential(         
+            nn.Conv1d(
+                in_channels=2,              
+                out_channels=16,            
+                kernel_size=4,             
+                stride=1,                   
+                padding=1,                 
+            ),                              
+            nn.ReLU(),                      
+            nn.MaxPool1d(kernel_size=2),    
+        )
+        self.out2 = nn.Linear(48, 16)         
+        
         self.bn0 = nn.BatchNorm1d(num_inputs)
         self.bn0.weight.data.fill_(1)
         self.bn0.bias.data.fill_(0)
@@ -130,7 +156,23 @@ class Critic(nn.Module):
         self.V.bias.data.mul_(0.1)
 
     def forward(self, inputs, actions):
-        x = inputs
+        cnn1 = inputs[:, 0:8].contiguous()
+        cnn1 = cnn1.view(1,2,8)
+        cnn1 = self.conv1(cnn1)
+        cnn1 = cnn1.view(cnn1.size(0), -1)
+        cnn1 = self.out1(cnn1)
+        cnn1 = cnn1.view(2,8)
+        
+        cnn2 = inputs[:, 8:16].contiguous()
+        cnn2 = cnn2.view(1,2,8)
+        cnn2 = self.conv2(cnn2)
+        cnn2 = cnn2.view(cnn2.size(0), -1)
+        cnn2 = self.out2(cnn2)
+        cnn2 = cnn2.view(2,8)
+        
+        x = torch.cat((cnn1,cnn2), 1)
+        x = torch.cat((x,inputs[:,16:]), 1)        
+        
         x = self.bn0(x)
         x = F.tanh(self.linear1(x))
         a = F.tanh(self.linear_action(actions))
