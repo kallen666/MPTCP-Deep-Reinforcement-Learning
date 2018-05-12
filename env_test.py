@@ -6,7 +6,7 @@ from gym import spaces
 
 import torch
 from ddpg_cnn import DDPG_CNN
-
+from naf_cnn import NAF_CNN
 from normalized_actions import NormalizedActions
 from ounoise import OUNoise
 from replay_memory import ReplayMemory, Transition
@@ -51,7 +51,7 @@ class env():
 def main():
     my_env = env()
     
-    agent = DDPG_CNN(0.99, 0.001, 128,
+    agent = NAF_CNN(0.99, 0.001, 128,
                       my_env.observation_space.shape[0], my_env.action_space)
     
     parser = argparse.ArgumentParser(description='PyTorch REINFORCE example')
