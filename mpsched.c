@@ -12,7 +12,7 @@ static PyObject* persist_state(PyObject* self, PyObject* args)
   return Py_BuildValue("i", fd);
 }
 
-static PyObject* get_recv_buff(PyObject* self, PyObject* args)
+static PyObject* get_meta_info(PyObject* self, PyObject* args)
 {
     int fd;
     if(!PyArg_ParseTuple(args, "i", &fd)) {
@@ -38,11 +38,13 @@ static PyObject* get_recv_buff(PyObject* self, PyObject* args)
     socklen_t len = sizeof(minfo);
 
     getsockopt(fd, SOL_TCP, MPTCP_INFO, &minfo, &len);
-
-    return Py_BuildValue("I", meta_info.mptcpi_unacked);
+    PyObject *list = PyList_New(0);
+    PyList_Append(list, Py_BuildValue("I", meta_info.mptcpi_unacked));
+    PyList_Append(list, Py_BuildValue("I", meta_info.mptcpi_retransmits));
+    return list;
 }
 
-static PyObject* get_info(PyObject* self, PyObject* args)
+static PyObject* get_sub_info(PyObject* self, PyObject* args)
 {
   int fd;
   if(!PyArg_ParseTuple(args, "i", &fd)) {
@@ -79,14 +81,16 @@ static PyObject* get_info(PyObject* self, PyObject* args)
     PyObject *subflows = PyList_New(0);
     PyList_Append(subflows, Py_BuildValue("I", others[i].tcpi_segs_out));
     PyList_Append(subflows, Py_BuildValue("I", others[i].tcpi_rtt));
-    PyList_Append(subflows, Py_BuildValue("I", others[i].tcpi_unacked));
-    PyList_Append(subflows, Py_BuildValue("I", others[i].tcpi_total_retrans)); /* Packets which are "in flight"	*/
+    PyList_Append(subflows, Py_BuildValue("I", others[i].tcpi_snd_cwnd));
+    //PyList_Append(subflows, Py_BuildValue("I", others[i].tcpi_unacked));
+    //PyList_Append(subflows, Py_BuildValue("I", others[i].tcpi_total_retrans)); /* Packets which are "in flight"	*/
 
     PyList_Append(list, subflows);
   }
   return list;
 }
 
+/*
 static PyObject* set_seg(PyObject* self, PyObject* args)
 {
   PyObject * listObj;
@@ -116,12 +120,12 @@ static PyObject* set_seg(PyObject* self, PyObject* args)
 
   return Py_BuildValue("i", fd);
 }
-
+*/
 static PyMethodDef Methods[] = {
   {"persist_state", persist_state, METH_VARARGS, "persist mptcp subflows tate"},
-  {"get_recv_buff", get_recv_buff, METH_VARARGS, "get mptcp recv buff size"},
-  {"get_info", get_info, METH_VARARGS, "get mptcp subflows info"},
-  {"set_seg", set_seg, METH_VARARGS, "set num of segments in all mptcp subflows"},
+  {"get_meta_info", get_meta_info, METH_VARARGS, "get mptcp recv buff size"},
+  {"get_sub_info", get_sub_info, METH_VARARGS, "get mptcp subflows info"},
+  //{"set_seg", set_seg, METH_VARARGS, "set num of segments in all mptcp subflows"},
   {NULL, NULL, 0, NULL}
 };
 
