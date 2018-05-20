@@ -12,9 +12,8 @@ from gym import wrappers
 from gym import spaces
 
 import torch
-from ddpg import DDPG
 from ddpg_cnn import DDPG_CNN
-from naf import NAF
+from naf_cnn import NAF_CNN
 from normalized_actions import NormalizedActions
 from ounoise import OUNoise
 from replay_memory import ReplayMemory, Transition
@@ -45,23 +44,24 @@ class io_thread(threading.Thread):
 
 class env():
     """ """
-    def __init__(self, fd, buff_size, time, k, l, m, n, p):
+    def __init__(self, fd, buff_size, time, k, l, n, p):
         self.fd = fd
         self.buff_size = buff_size
         self.k = k  ##对以往k个时间段的观测
         self.l = l  ##吞吐量的奖励因子
-        self.m = m  ##RTT惩罚因子
+        #self.m = m  ##RTT惩罚因子
         self.n = n  ##缓冲区膨胀惩罚因子
         self.p = p  ##重传惩罚因子
         self.time = time
         self.last = []
         self.tp = [[], []]
         self.rtt = [[], []]
-        self.rr = [0, 0]
+        self.cwnd = [[], []]
+        self.rr = 0
         self.count = 1
         self.recv_buff_size = 0
         
-        self.observation_space = spaces.Box(np.array([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]), np.array([float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf")]))
+        self.observation_space = spaces.Box(np.array([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]), np.array([float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf")]))
         
         self.action_space = spaces.Box(np.array([1]), np.array([4]))
 
@@ -70,44 +70,49 @@ class env():
     def adjust(self, state):
         for j in range(len(state)):
             self.tp[j].pop(0)
-            self.tp[j].append(state[j][0]-self.last[j][0])
+            self.tp[j].append(state[j][0]-self.last[j])
             self.rtt[j].pop(0)
             self.rtt[j].append(state[j][1])
-            self.rr[j] = state[j][3] - self.last[j][3]
-        self.last = state
-        self.recv_buff_size = mpsched.get_recv_buff(self.fd)
-        return [self.tp[0] + self.rtt[0] + [state[0][2]] + [self.rr[0]], self.tp[1] + self.rtt[1] + [state[1][2]] + [self.rr[1]]]
+            self.cwnd[j].pop(0)
+            self.cwnd[j].append(state[j][2])
+        self.last = [x[0] for x in state]
+        mate = mpsched.get_meta_info(self.fd)
+        self.recv_buff_size = mate[0]
+        self.rr = mate[1] - self.rr
+        return [self.tp[0] + self.rtt[0] + self.cwnd[0] + [self.recv_buff_size, self.rr], self.tp[1] + self.rtt[1] + self.cwnd[1]+ [self.recv_buff_size, self.rr]]
 
     def reward(self):
         rewards = self.l * (sum(self.tp[0]) + sum(self.tp[1]))
-        rewards = rewards - self.m * (sum(self.rtt[0]) + sum(self.rtt[1]))
+        #rewards = rewards - self.m * (sum(self.rtt[0]) + sum(self.rtt[1]))
         rewards = rewards - self.n * self.recv_buff_size
-        rewards = rewards - self.p * sum(self.rr)
+        rewards = rewards - self.p * self.rr
         return rewards
 
     """ reset env, return the initial state  """
     def reset(self):
         mpsched.persist_state(self.fd)
         time.sleep(1)
-        self.last = mpsched.get_info(self.fd)
+        self.last = [x[0] for x in mpsched.get_sub_info(self.fd)]
 
         for i in range(self.k):
-            state = mpsched.get_info(self.fd)
-            for j in range(len(state)):
-                 self.tp[j].append(state[j][0]-self.last[j][0])
-                 self.rtt[j].append(state[j][1])
-                 self.rr[j] = state[j][3] - self.last[j][3]
-            self.last = state
+            subs = mpsched.get_sub_info(self.fd)
+            for j in range(len(subs)):
+                 self.tp[j].append(subs[j][0]-self.last[j])
+                 self.rtt[j].append(subs[j][1])
+                 self.cwnd[j].append(subs[j][2])
+            self.last = [x[0] for x in subs]
             time.sleep(self.time)
-        self.recv_buff_size = mpsched.get_recv_buff(self.fd)
-        return [self.tp[0] + self.rtt[0] + [state[0][2]] + [self.rr[0]], self.tp[1] + self.rtt[1] + [state[1][2]] + [self.rr[1]]]
+        mate = mpsched.get_meta_info(self.fd)
+        self.recv_buff_size = mate[0]
+        self.rr = mate[1]
+        return [self.tp[0] + self.rtt[0] + self.cwnd[0] + [self.recv_buff_size, self.rr], self.tp[1] + self.rtt[1] + self.cwnd[1]+ [self.recv_buff_size, self.rr]]
 
     """ action = [sub1_buff_size, sub2_buff_size] """
     def step(self, action):
         # A = [self.fd, action[0], action[1]]
         # mpsched.set_seg(A)
         time.sleep(self.time)
-        state_nxt = mpsched.get_info(self.fd)
+        state_nxt = mpsched.get_sub_info(self.fd)
         done = False
         if len(state_nxt) == 0:
             done = True
@@ -153,11 +158,11 @@ def main():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((IP, PORT))
     fd = sock.fileno()
-    my_env = env(fd=fd, buff_size=SIZE, time=TIME, k=8, l=0.01, m=0.02, n=0.03, p=0.05)
+    my_env = env(fd=fd, buff_size=SIZE, time=TIME, k=8, l=0.01, n=0.03, p=0.05)
     mpsched.persist_state(fd)
 
     args = parser.parse_args()
-    agent = DDPG_CNN(args.gamma, args.tau, args.hidden_size,
+    agent = NAF_CNN(args.gamma, args.tau, args.hidden_size,
                       my_env.observation_space.shape[0], my_env.action_space)
     memory = ReplayMemory(args.replay_size)
     ounoise = OUNoise(my_env.action_space.shape[0])

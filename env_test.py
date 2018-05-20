@@ -16,7 +16,7 @@ from replay_memory import ReplayMemory, Transition
 class env():
     """ """
     def __init__(self):
-        self.observation_space = spaces.Box(np.array([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]), np.array([float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf")]))
+        self.observation_space = spaces.Box(np.array([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]), np.array([float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf"),float("inf")]))
         
         self.action_space = spaces.Box(np.array([1]), np.array([4]))
 
@@ -35,13 +35,13 @@ class env():
 
     """ reset env, return the initial state  """
     def reset(self):
-        state = np.array([[1,2,3,4,5,6,1,2,3,4,5,6,1,2,3,4,5,6],[1,2,3,4,5,6,1,2,3,4,5,6,1,2,3,4,5,6]])
+        state = np.array([[1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,1,2],[1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,1,2]])
         state = torch.FloatTensor(state)
         return state
 
     """ action = [sub1_buff_size, sub2_buff_size] """
     def step(self, action):
-        state = np.array([[1,2,3,4,5,6,1,2,3,4,5,6,1,2,3,4,5,6],[1,2,3,4,5,6,1,2,3,4,5,6,1,2,3,4,5,6]])
+        state = np.array([[1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,1,2],[1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,1,2]])
         state = torch.FloatTensor(state)
         reward = 1
         done = 0

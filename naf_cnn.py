@@ -47,7 +47,20 @@ class Policy(nn.Module):
             nn.ReLU(),                      
             nn.MaxPool1d(kernel_size=2),    
         )
-        self.out2 = nn.Linear(48, 16)    
+        self.out2 = nn.Linear(48, 16)  
+        
+        self.conv3 = nn.Sequential(         
+            nn.Conv1d(
+                in_channels=2,              
+                out_channels=16,            
+                kernel_size=4,             
+                stride=1,                   
+                padding=1,                 
+            ),                              
+            nn.ReLU(),                      
+            nn.MaxPool1d(kernel_size=2),    
+        )
+        self.out3 = nn.Linear(48, 16)  
 
         self.bn0 = nn.BatchNorm1d(num_inputs)
         self.bn0.weight.data.fill_(1)
@@ -96,8 +109,16 @@ class Policy(nn.Module):
         cnn2 = self.out2(cnn2)
         cnn2 = cnn2.view(2,8)
         
+        cnn3 = inputs[:, 16:24].contiguous()
+        cnn3 = cnn3.view(1,2,8)
+        cnn3 = self.conv3(cnn3)
+        cnn3 = cnn3.view(cnn3.size(0), -1)
+        cnn3 = self.out3(cnn3)
+        cnn3 = cnn3.view(2,8)
+        
         x = torch.cat((cnn1,cnn2), 1)
-        x = torch.cat((x,inputs[:,16:]), 1)    
+        x = torch.cat((x,cnn3), 1)
+        x = torch.cat((x,inputs[:,24:]), 1)    
         
         
         x = self.bn0(x)
