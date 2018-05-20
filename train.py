@@ -61,7 +61,7 @@ class env():
         mate = mpsched.get_meta_info(self.fd)
         self.recv_buff_size = mate[0]
         self.rr = mate[1] - self.rr
-        return [self.tp[0] + self.rtt[0] + self.cwnd[0], self.tp[1] + self.rtt[1] + self.cwnd[1], self.recv_buff_size, self.rr]
+        return [self.tp[0] + self.rtt[0] + self.cwnd[0] + [self.recv_buff_size, self.rr], self.tp[1] + self.rtt[1] + self.cwnd[1]+ [self.recv_buff_size, self.rr]]
 
     def reward(self):
         rewards = self.l * (sum(self.tp[0]) + sum(self.tp[1]))
@@ -87,7 +87,7 @@ class env():
         mate = mpsched.get_meta_info(self.fd)
         self.recv_buff_size = mate[0]
         self.rr = mate[1]
-        return [self.tp[0] + self.rtt[0] + self.cwnd[0], self.tp[1] + self.rtt[1] + self.cwnd[1], self.recv_buff_size, self.rr]
+        return [self.tp[0] + self.rtt[0] + self.cwnd[0] + [self.recv_buff_size, self.rr], self.tp[1] + self.rtt[1] + self.cwnd[1]+ [self.recv_buff_size, self.rr]]
 
     """ action = [sub1_buff_size, sub2_buff_size] """
     def step(self, action):
