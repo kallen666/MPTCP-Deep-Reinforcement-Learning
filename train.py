@@ -66,7 +66,7 @@ class env():
     def reward(self):
         rewards = self.l * (sum(self.tp[0]) + sum(self.tp[1]))
         #rewards = rewards - self.m * (sum(self.rtt[0]) + sum(self.rtt[1]))
-        rewards = rewards - self.n * self.recv_buff_size
+        rewards = rewards + self.n * self.recv_buff_size
         rewards = rewards - self.p * self.rr
         return rewards
 

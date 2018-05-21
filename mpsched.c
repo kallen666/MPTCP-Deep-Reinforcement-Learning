@@ -90,7 +90,7 @@ static PyObject* get_sub_info(PyObject* self, PyObject* args)
   return list;
 }
 
-/*
+
 static PyObject* set_seg(PyObject* self, PyObject* args)
 {
   PyObject * listObj;
@@ -120,12 +120,12 @@ static PyObject* set_seg(PyObject* self, PyObject* args)
 
   return Py_BuildValue("i", fd);
 }
-*/
+
 static PyMethodDef Methods[] = {
   {"persist_state", persist_state, METH_VARARGS, "persist mptcp subflows tate"},
   {"get_meta_info", get_meta_info, METH_VARARGS, "get mptcp recv buff size"},
   {"get_sub_info", get_sub_info, METH_VARARGS, "get mptcp subflows info"},
-  //{"set_seg", set_seg, METH_VARARGS, "set num of segments in all mptcp subflows"},
+  {"set_seg", set_seg, METH_VARARGS, "set num of segments in all mptcp subflows"},
   {NULL, NULL, 0, NULL}
 };
 
