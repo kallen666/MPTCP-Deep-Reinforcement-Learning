@@ -168,6 +168,7 @@ def main():
     ounoise = OUNoise(my_env.action_space.shape[0])
 
     rewards = []
+    times = []
     for i_episode in range(EPISODE):
         if (i_episode < 0.9*EPISODE):  # training
             io = io_thread(sock=sock, filename=FILE, buffer_size=SIZE)
@@ -181,12 +182,12 @@ def main():
             episode_reward = 0
             while True:
                 state = torch.FloatTensor(state)
-                print("state: {}\n ounoise: {}".format(state, ounoise.scale))
+                #print("state: {}\n ounoise: {}".format(state, ounoise.scale))
                 action = agent.select_action(state, ounoise)
-                print("action: {}".format(action))
+                #print("action: {}".format(action))
                 next_state, reward, count, recv_buff_size, done = my_env.step(action)
-                print("buff size: ",recv_buff_size)
-                print("reward: ", reward)
+                #print("buff size: ",recv_buff_size)
+                #print("reward: ", reward)
                 episode_reward += reward
                 
                 action = torch.FloatTensor(action)
@@ -201,7 +202,7 @@ def main():
                     for _ in range(args.updates_per_step):
                         transitions = memory.sample(args.batch_size)
                         batch = Transition(*zip(*transitions))
-                        print("update",10*'--')
+                        #print("update",10*'--')
                         agent.update_parameters(batch)
                     
                 if done:
@@ -213,6 +214,7 @@ def main():
             io.start()
             state=my_env.reset()
             episode_reward = 0
+            start_time = time.time()
             while True:
                 state = torch.FloatTensor(state)
                 #print("state: {}\n".format(state))
@@ -225,8 +227,12 @@ def main():
                 if done:
                     break
             rewards.append(episode_reward)
+            times.append(str(time.time() - start_time) + "\n")
             io.join()
-        print("Episode: {}, noise: {}, reward: {}, average reward: {}".format(i_episode, ounoise.scale, rewards[-1], np.mean(rewards[-100:])))
+        #print("Episode: {}, noise: {}, reward: {}, average reward: {}".format(i_episode, ounoise.scale, rewards[-1], np.mean(rewards[-100:])))
+        fo = open("times.txt", "w")
+        fo.writelines(lines)
+        fo.close()
             
     sock.close()
 

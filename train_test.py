@@ -122,6 +122,7 @@ def main():
     my_env = env(fd=fd, buff_size=SIZE, time=TIME, k=4, l=0.01, n=0.03, p=0.05)
     lines = []
     state = my_env.reset()
+    start_time = time.time()
     while True:
         action = []
         state_nxt, reward, count, recv_buff_size, done = my_env.step(action)
@@ -131,11 +132,12 @@ def main():
         #print(recv_buff_size)
         #print(state_nxt[0][0]," ", state_nxt[1][0])
         lines.append(str(state_nxt[0][0]) + " "+str(state_nxt[1][0])+"\n")
+    end_time = time.time();
     print(count)
-    fo = open("seg_rr_70ms.txt", "w")
+    fo = open("seg_rr.txt", "w")
     fo.writelines(lines)
     fo.close()
-    print("finish")
+    print("completion time: ", end_time - start_time)
     io.join()
 
 
