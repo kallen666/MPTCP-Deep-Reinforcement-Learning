@@ -115,7 +115,7 @@ def main():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((IP, PORT))
     fd = sock.fileno()
-    io = io_thread(sock=sock, filename=FILE, buffer_size=SIZE)
+    io = io_thread(sock=sock, filename="./64kb.dat", buffer_size=SIZE)
     mpsched.persist_state(fd)
 
     io.start()
@@ -133,10 +133,12 @@ def main():
         #print(state_nxt[0][0]," ", state_nxt[1][0])
         lines.append(str(state_nxt[0][0]) + " "+str(state_nxt[1][0])+"\n")
     end_time = time.time();
-    print(count)
-    fo = open("seg_rr.txt", "w")
-    fo.writelines(lines)
-    fo.close()
+    #print(count)
+    
+    #fo = open("seg_rr.txt", "w")
+    #fo.writelines(lines)
+    #fo.close()
+    
     print("completion time: ", end_time - start_time)
     io.join()
 
