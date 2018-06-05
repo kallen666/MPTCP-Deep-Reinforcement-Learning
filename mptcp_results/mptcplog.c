@@ -28,8 +28,8 @@
 //ip address 用于过滤数据包
 #define dst_ip "114.212.80.16" 
 
-//#define src_ip "172.27.136.153" //w1
-#define src_ip "192.168.1.104"
+#define src_ip "172.27.153.151" //w1
+//#define src_ip "192.168.1.104"
 
 unsigned short tcp_dst_port_table[MAX_PORT_NUM];
 int port_count = 0;

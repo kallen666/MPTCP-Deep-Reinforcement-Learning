@@ -115,7 +115,7 @@ def main():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((IP, PORT))
     fd = sock.fileno()
-    io = io_thread(sock=sock, filename="./64kb.dat", buffer_size=SIZE)
+    io = io_thread(sock=sock, filename="./64mb.dat", buffer_size=SIZE)
     mpsched.persist_state(fd)
 
     io.start()

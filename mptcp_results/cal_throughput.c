@@ -55,6 +55,8 @@ created time: 2015-07-10
 //时间戳最大长度
 #define MAX_TIME_LEN 64
 
+int total_sum = 0;
+
 void calculate(char* in_file_name, char* out_file_name)
 {
 	FILE* fread = fopen(in_file_name,"r");
@@ -144,6 +146,7 @@ void calculate(char* in_file_name, char* out_file_name)
 			{
 				//写入 单位时间戳和sum
 				fprintf(fwrite, "%s\t%d\n", pre_time, sum);
+				total_sum += sum;
 			}
 			
 			
@@ -200,8 +203,9 @@ int main(int argc, char *argv[])
                 printf("输入文件名：%s\t 输出文件名：%s\n",pDirEntry->d_name, outfilename);
 				
 				calculate(pDirEntry->d_name, outfilename);
-				
+				printf("total data byte: %d\n", total_sum);
 				printf("------------------------------------\n");
+				total_sum = 0;
 			}
 		}
 		closedir(pDir);
