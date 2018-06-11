@@ -52,12 +52,12 @@ class env():
     def adjust(self, state):
         for j in range(len(state)):
             self.tp[j].pop(0)
-            self.tp[j].append(state[j][0]-self.last[j])
+            self.tp[j].append(state[j][0]-self.last[j][0])
             self.rtt[j].pop(0)
-            self.rtt[j].append(state[j][1])
+            self.rtt[j].append(state[j][1]-self.last[j][1])
             self.cwnd[j].pop(0)
             self.cwnd[j].append(state[j][2])
-        self.last = [x[0] for x in state]
+        self.last = state
         mate = mpsched.get_meta_info(self.fd)
         self.recv_buff_size = mate[0]
         self.rr = mate[1] - self.rr
@@ -74,15 +74,15 @@ class env():
     def reset(self):
         mpsched.persist_state(self.fd)
         time.sleep(1)
-        self.last = [x[0] for x in mpsched.get_sub_info(self.fd)]
+        self.last = mpsched.get_sub_info(self.fd)
 
         for i in range(self.k):
             subs = mpsched.get_sub_info(self.fd)
             for j in range(len(subs)):
-                 self.tp[j].append(subs[j][0]-self.last[j])
-                 self.rtt[j].append(subs[j][1])
+                 self.tp[j].append(subs[j][0] - self.last[j][0])
+                 self.rtt[j].append(subs[j][1] - self.last[j][1])
                  self.cwnd[j].append(subs[j][2])
-            self.last = [x[0] for x in subs]
+            self.last = subs
             time.sleep(self.time)
         mate = mpsched.get_meta_info(self.fd)
         self.recv_buff_size = mate[0]
