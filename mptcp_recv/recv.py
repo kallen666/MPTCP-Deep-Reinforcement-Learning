@@ -71,7 +71,7 @@ class record(object):
 
 def main():
     server = socket.socket()
-    host = socket.gethostname()
+    host = '*'
     port = 6669
     server.bind((host, port))
 
@@ -92,6 +92,7 @@ def main():
             time.sleep(timestep)
             data = info.get_info(fd)
             if len(data) == 0:
+                io.join()
                 break
             r.put(data)
 

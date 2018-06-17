@@ -1,6 +1,6 @@
 from distutils.core import setup, Extension
 
-setup(name='mpsched',
+setup(name='info',
       ext_modules=[
           Extension('info',
                     ['info.c'],
