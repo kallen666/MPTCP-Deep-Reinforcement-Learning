@@ -81,7 +81,7 @@ def main():
         c, addr = server.accept()
         print('connect addr : {}'.format(addr))
         fd = c.fileno()
-        io = recv_thread(fd)
+        io = recv_thread(c)
         info.persist_state(fd)
         io.start()
 
