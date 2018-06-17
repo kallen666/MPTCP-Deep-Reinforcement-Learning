@@ -40,7 +40,7 @@ static PyObject* get_info(PyObject* self, PyObject* args)
   getsockopt(fd, SOL_TCP, MPTCP_INFO, &minfo, &len);
 
   PyObject *list = PyList_New(0);
-  if(others[i].tcpi_state == 1)
+  if(others[0].tcpi_state == 1)
   {
       PyList_Append(list, Py_BuildValue("I", others[0].tcpi_bytes_received));
       PyList_Append(list, Py_BuildValue("I", others[1].tcpi_bytes_received));
