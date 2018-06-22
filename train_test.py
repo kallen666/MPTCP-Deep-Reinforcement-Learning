@@ -67,21 +67,13 @@ def main():
     sock.connect((IP, PORT))
     fd = sock.fileno()
 
-    io = io_thread(sock=sock, filename=FILE, buffer_size=SIZE)
-    r = record(timestep=timestep, datafile="record")
+    io = io_thread(sock=sock, filename='./256mb.dat', buffer_size=SIZE)
+    
 
     start_time = time.time()
     io.start()
-
-    while True:
-        time.sleep(timestep)
-        data = mpsched.get_sub_info(fd)
-        if len(data) == 0:
-            io.join()
-            break
-        r.put(data)
-
-    r.save()
+    io.join();
+   
     end_time = time.time()
     print("completion time: ", end_time - start_time)
 
